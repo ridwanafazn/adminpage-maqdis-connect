@@ -1,68 +1,142 @@
-import os
 import requests
-from dotenv import load_dotenv
+import re
+import time
 
-load_dotenv()
+API_BASE_URL = "https://jxjlm6b5-5000.asse.devtunnels.ms/"  
 
-BASE_URL = os.getenv("BASE_URL")
+def login_user(email, password):
+    try:
+        res = requests.post(f"{API_BASE_URL}/api/auth/login", json={"email": email, "password": password})
+        if res.status_code == 200:
+            return res.json()
+    except:
+        return None
 
-def login(email: str, password: str):
-    url = f"{BASE_URL}/api/auth/login"
-    payload = {"email": email, "password": password}
-    r = requests.post(url, json=payload)
-    r.raise_for_status()
-    return r.json()
-
-def get_groups(token: str):
-    url = f"{BASE_URL}/api/Group"
-    # Tidak butuh token
-    r = requests.get(url)
-    r.raise_for_status()
-    return r.json()
-
-import requests
+def get_groups(token):
+    try:
+        res = requests.get(f"{API_BASE_URL}/api/Group", headers={"token": token})
+        return res.json()
+    except:
+        return []
 
 def get_rooms(token):
-    url = f"{BASE_URL}/api/Audio/getRoom"
-    headers = {
-        "Authorization": f"Bearer {token}"
+    try:
+        res = requests.get(f"{API_BASE_URL}/api/Audio/getRoom", headers={"token": token})
+        return res.json()["getAllrooms"]
+    except:
+        return []
+
+def get_profile(token):
+    try:
+        res = requests.get(f"{API_BASE_URL}/api/profile/me", headers={"token": token})
+        return res.json().get("data", {})
+    except:
+        return {}
+
+
+
+def create_group(nama_grup, user_id, token):
+    try:
+        res = requests.post(
+            f"{API_BASE_URL}/api/Group/admin",
+            json={"nama_grup": nama_grup},
+            headers={"token": token}
+        )
+        return res.json()["data"]
+    except:
+        return {}
+
+def generate_room(nama_room, token):
+    try:
+        res = requests.post(
+            f"{API_BASE_URL}/api/Audio/generateToken",
+            json={"nama_room": nama_room},
+            headers={"token": token}
+        )
+        if res.status_code == 200:
+            return res.json()["room"]
+        else:
+            print("Error creating room:", res.text)
+            return None
+    except Exception as e:
+        print("Exception during room creation:", e)
+        return None
+
+
+def refresh_token(room_id, token):
+    try:
+        res = requests.post(
+            f"{API_BASE_URL}/api/Audio/refreshToken",
+            json={"room_Id": room_id},
+            headers={"token": token}
+        )
+        if res.status_code == 200:
+            return res.json()["room"]
+        else:
+            print("Error refreshing token:", res.text)
+            return None
+    except Exception as e:
+        print("Exception during token refresh:", e)
+        return None
+
+
+def assign_room(room_id, grup_id, token):
+    try:
+        res = requests.post(
+            f"{API_BASE_URL}/api/Audio/assignRoom",
+            json={"roomid": room_id, "grupid": grup_id},
+            headers={"token": token}
+        )
+        return res.json()
+    except:
+        return {}
+
+def is_valid_email(email):
+    return re.match(r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$", email) is not None
+
+def is_valid_password(password):
+    return (
+        len(password) >= 8
+        and re.search(r"[A-Z]", password)
+        and re.search(r"[a-z]", password)
+        and re.search(r"[0-9]", password)
+        and re.search(r"[!@#$%^&*(),.?\":{}|<>]", password)
+    )
+
+def is_valid_whatsapp(number):
+    return re.fullmatch(r"\d{10,15}", number) is not None
+
+def register_user(name, email, password, whatsapp):
+    name = f"Admin {name.strip()}"
+    payload = {
+        "name": name,
+        "email": email,
+        "role": "admin",
+        "password": password,
+        "whatsapp": whatsapp
     }
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()  # Biar error langsung dilempar kalau 4xx/5xx
-    return response.json()
+    try:
+        response = requests.post(f"{API_BASE_URL}/api/auth/register", json=payload)
+        return response.json()
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
+def request_otp(email):
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/api/email/request-otp",
+            json={"email": email, "type": "register"}
+        )
+        return response.json()
+    except Exception as e:
+        return {"message": f"Error: {e}"}
 
-def create_group(token: str, user_id: str, nama_grup: str):
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # 1. create group admin
-    url_admin = f"{BASE_URL}/api/Group/admin?userId={user_id}"
-    payload = {"nama_grup": nama_grup}
-    r_admin = requests.post(url_admin, headers=headers, json=payload)
-    r_admin.raise_for_status()
-    group_data = r_admin.json().get("data")
-
-    # 2. generate room token (butuh token)
-    url_generate = f"{BASE_URL}/api/Audio/generateToken"
-    room_payload = {"nama_room": nama_grup}
-    r_generate = requests.post(url_generate, headers=headers, json=room_payload)  # tambahkan headers!
-    r_generate.raise_for_status()
-    room_data = r_generate.json().get("room")
-
-    # 3. assign room to group
-    url_assign = f"{BASE_URL}/api/Audio/assignRoom"
-    assign_payload = {"roomid": room_data["id"], "grupid": group_data["grupid"]}
-    r_assign = requests.post(url_assign, headers=headers, json=assign_payload)
-    r_assign.raise_for_status()
-
-    # 4. refresh token for room
-    url_refresh = f"{BASE_URL}/api/Audio/refreshToken"
-    refresh_payload = {"room_Id": room_data["id"]}
-    r_refresh = requests.post(url_refresh, headers=headers, json=refresh_payload)
-    r_refresh.raise_for_status()
-    refreshed_room = r_refresh.json().get("room")
-
-    return {
-        "group": group_data,
-        "room": refreshed_room
-    }
+def verify_otp(email, otp):
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/api/email/verify-otp",
+            json={"email": email, "otp": otp}
+        )
+        return response.json()
+    except Exception as e:
+        return {"message": f"Error: {e}"}
