@@ -196,11 +196,11 @@ elif st.session_state.page == "group":
             with col1:
                 keyword = st.text_input("Kata kunci")
             with col2:
-                search_field = st.selectbox("Filter berdasarkan", ["Nama Grup", "ID", "Dibuat Oleh", "Room ID"])
+                search_field = st.selectbox("Filter berdasarkan", ["Nama Grup", "Dibuat Oleh", "Room ID"])
 
             field_mapping = {
                 "Nama Grup": "nama_grup",
-                "ID": "grupid",
+                "ID Grup": "grupid",
                 "Dibuat Oleh": "created_by",
                 "Room ID": "roomid"
             }
