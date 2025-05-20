@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 import requests
 from streamlit_option_menu import option_menu
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -12,7 +13,7 @@ from datetime import datetime
 
 API_BASE_URL = "https://jxjlm6b5-5000.asse.devtunnels.ms" 
 st.set_page_config(
-    page_title="Maqdis Connect", 
+    page_title="Maqdis Connect",    
     page_icon="./public/favicon.png",                      
     layout="wide"                       
 )
@@ -46,7 +47,7 @@ with st.sidebar:
     selected = option_menu(
         menu_title="Maqdis",
         options=["Login", "Registration", "Dashboard", "Profile", "Group", "Room", "Manage"],
-        icons=["box-arrow-in-right", "person-plus", "speedometer", "person-circle", "people", "house", "gear"],
+        icons=["box-arrow-in-right", "person-plus", "speedometer", "person-circle", "people", "house", "tools"],
         menu_icon="airplane", 
         default_index=2,
         orientation="vertical"
@@ -66,14 +67,25 @@ if st.session_state.page == "login":
         password = st.text_input("Password", type="password")
         if st.button("Login"):
             user = login_user(email, password)
+
             if user:
-                st.session_state.token = user["token"]
-                st.session_state.user = user
-                st.success("Login berhasil!")
-                st.session_state.page = "Dashboard"
-                st.rerun()
+                # Cek apakah ada "errors" di response
+                if "errors" in user:
+                    st.error(user["errors"][0]["msg"])
+                else:
+                    role = user.get("role") or user.get("user", {}).get("role")
+                    if role != "admin":
+                        st.error("Hanya akun dengan role 'admin' yang dapat mengakses halaman ini.")
+                    else:
+                        st.session_state.token = user["token"]
+                        st.session_state.user = user
+                        st.success("Login berhasil!")
+                        st.session_state.page = "Dashboard"
+                        st.rerun()
             else:
-                st.error("Gagal login!")
+                st.error("Gagal login! Cek kembali email dan password Anda.")
+
+
 
 # Signup
 elif st.session_state.page == "registration":
@@ -310,6 +322,70 @@ elif st.session_state.page == "room":
                 enable_enterprise_modules=False
             )
 
+                    # --- MANUAL REFRESH TOKEN ---
+            st.markdown("---")
+            st.subheader("🔄 Refresh Token Manual")
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                search_room_input = st.text_input("ID atau Nama Room", placeholder="Masukkan ID atau Nama Room...")
+
+            with col2:
+                st.markdown("""
+                <style>
+                @media (max-width: 768px) {
+                    .refresh-btn-padding {
+                        padding-top: 0px;
+                    }
+                }
+                @media (min-width: 769px) {
+                    .refresh-btn-padding {
+                        padding-top: 28px;
+                    }
+                }
+                </style>
+                <div class="refresh-btn-padding"></div>
+                """, unsafe_allow_html=True)
+                refresh_clicked = st.button("🔁 Refresh Token", use_container_width=True)
+
+            # Variabel penampung pesan
+            message = None
+            message_type = None  # "warning", "error", "success"
+
+            if refresh_clicked:
+                if not search_room_input.strip():
+                    message = "Input tidak boleh kosong."
+                    message_type = "warning"
+                else:
+                    with st.spinner("Memproses..."):
+                        time.sleep(1)
+                        input_lower = search_room_input.strip().lower()
+                        matched_room = next((
+                            r for r in rooms if input_lower == r.get("id", "").lower() or input_lower == r.get("nama_room", "").lower()
+                        ), None)
+
+                        if not matched_room:
+                            message = "Tidak ditemukan room dengan ID atau Nama tersebut."
+                            message_type = "error"
+                        else:
+                            refreshed = refresh_token(matched_room["id"], st.session_state.token)
+                            if refreshed and isinstance(refreshed, dict) and refreshed.get("id"):
+                                message = f"Token room '{refreshed['nama_room']}' berhasil diperbarui."
+                                message_type = "success"
+                            else:
+                                msg = refreshed.get("message") or refreshed.get("msg") or "Gagal memperbarui token."
+                                message = msg
+                                message_type = "error"
+
+            # Tampilkan pesan full width di bawah kolom
+            if message:
+                if message_type == "warning":
+                    st.warning(message)
+                elif message_type == "error":
+                    st.error(message)
+                elif message_type == "success":
+                    st.success(message)
+
 # Halaman Manage
 elif st.session_state.page == "manage":
     st.title("🛠️ Buat Grup")
@@ -318,12 +394,22 @@ elif st.session_state.page == "manage":
         st.warning("Silakan login.")
     else:
         selected_date = st.date_input("Pilih Tanggal Keberangkatan", min_value=datetime.today())
-        nama_grup = f"Grup {selected_date.strftime('%d %B %Y')}"
 
+        bulan_indonesia = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+        ]
+        tanggal = selected_date.day
+        bulan = bulan_indonesia[selected_date.month - 1]
+        tahun = selected_date.year
+
+        nama_grup = f"Grup {tanggal:02d} {bulan} {tahun}"
         st.markdown(f"**Nama Grup:** `{nama_grup}`")
 
-        if st.button("Buat Grup"):
+        def handle_create_group():
             with st.spinner("Mengecek dan membuat grup..."):
+                time.sleep(0.15)
+
                 token = st.session_state.token
                 user_id = st.session_state.user["id"]
 
@@ -333,37 +419,41 @@ elif st.session_state.page == "manage":
 
                 if any(g["nama_grup"].lower() == nama_grup.lower() for g in existing_groups):
                     st.error("❌ Grup dengan nama yang sama sudah ada.")
-                    st.stop()
+                    return
 
                 if any(r["nama_room"].lower() == nama_grup.lower() for r in existing_rooms):
                     st.error("❌ Room dengan nama yang sama sudah ada.")
-                    st.stop()
+                    return
 
                 # 1. Buat room
                 room = generate_room(nama_grup, token)
                 if not room or "id" not in room:
                     st.error("Gagal membuat room.")
-                    st.stop()
+                    return
 
                 # 2. Buat grup
                 grup = create_group(nama_grup, user_id, token)
                 if not grup or "grupid" not in grup:
                     st.error("Gagal membuat grup.")
-                    st.stop()
+                    return
 
                 # 3. Refresh token room
                 refreshed_room = refresh_token(room["id"], token)
                 if not refreshed_room:
                     st.error("Gagal me-refresh token room.")
-                    st.stop()
+                    return
 
                 # 4. Assign room ke grup
                 assign = assign_room(room["id"], grup["grupid"], token)
                 if not assign or assign.get("status") != "success":
                     st.error("Gagal menghubungkan room ke grup.")
-                    st.stop()
+                    return
 
                 st.success("✅ Grup dan Room berhasil dibuat dan dihubungkan.")
+
+        if st.button("Buat Grup"):
+            handle_create_group()
+
 
 # Profile
 elif st.session_state.page == "profile":
