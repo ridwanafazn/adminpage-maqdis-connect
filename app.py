@@ -163,7 +163,7 @@ elif st.session_state.page == "registration":
                         email = st.session_state.pending_signup.get("email")
                         result = verify_otp(email, otp)
                         if result.get("message") == "OTP valid":
-                            st.success("✅ Akun berhasil diverifikasi. Silakan login.")
+                            st.success("✅ Akun berhasil diverifikasi. Silahkan login.")
                             st.session_state.otp_ready = False
                             st.session_state.pending_signup = {}
                         else:
@@ -185,7 +185,7 @@ elif st.session_state.page == "registration":
 elif st.session_state.page == "dashboard":
     st.title("📊 Dashboard")
     if not st.session_state.token:
-        st.warning("Silakan login terlebih dahulu.")
+        st.warning("Silahkan login terlebih dahulu.")
     else:
         groups = get_groups(st.session_state.token)
         rooms = get_rooms(st.session_state.token)
@@ -197,7 +197,7 @@ elif st.session_state.page == "dashboard":
 elif st.session_state.page == "group":
     st.title("📁 Data Grup")
     if not st.session_state.token:
-        st.warning("Silakan login.")
+        st.warning("Silahkan login terlebih dahulu.")
     else:
         groups = get_groups(st.session_state.token)
 
@@ -264,7 +264,7 @@ elif st.session_state.page == "group":
 elif st.session_state.page == "room":
     st.title("🎧 Data Room")
     if not st.session_state.token:
-        st.warning("Silakan login.")
+        st.warning("Silahkan login terlebih dahulu.")
     else:
         rooms = get_rooms(st.session_state.token)
 
@@ -391,7 +391,7 @@ elif st.session_state.page == "manage":
     st.title("🛠️ Buat Grup")
 
     if not st.session_state.token:
-        st.warning("Silakan login.")
+        st.warning("Silahkan login terlebih dahulu.")
     else:
         selected_date = st.date_input("Pilih Tanggal Keberangkatan", min_value=datetime.today())
 
@@ -460,7 +460,7 @@ elif st.session_state.page == "profile":
     st.title("👤 Profil")
 
     if not st.session_state.token:
-        st.warning("Silakan login.")
+        st.warning("Silahkan login terlebih dahulu.")
     else:
         profile = get_profile(st.session_state.token)
 
