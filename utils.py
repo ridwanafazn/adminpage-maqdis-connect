@@ -2,7 +2,8 @@ import requests
 import re
 import time
 
-API_BASE_URL = "https://jxjlm6b5-5000.asse.devtunnels.ms/"  
+API_BASE_URL = "https://maqdis-api-781714147020.asia-southeast2.run.app"  
+# API_BASE_URL = "http://localhost:8080"  
 
 def login_user(email, password):
     try:
