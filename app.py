@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import logging
 import requests
 from streamlit_option_menu import option_menu
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -11,8 +12,6 @@ from utils import (
 )
 from datetime import datetime
 
-API_BASE_URL = "https://maqdis-api-781714147020.asia-southeast2.run.app" 
-# API_BASE_URL = "http://localhost:8080"  
 st.set_page_config(
     page_title="Maqdis Connect",    
     page_icon="./public/favicon.png",                      

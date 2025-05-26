@@ -1,9 +1,11 @@
+import logging
+import os
 import requests
 import re
 import time
-
-API_BASE_URL = "https://maqdis-api-781714147020.asia-southeast2.run.app"  
-# API_BASE_URL = "http://localhost:8080"  
+from dotenv import load_dotenv
+load_dotenv()
+API_BASE_URL = os.getenv("API_BASE_URL")
 
 def login_user(email, password):
     try:
