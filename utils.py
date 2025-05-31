@@ -94,6 +94,20 @@ def assign_room(room_id, grup_id, token):
     except:
         return {}
 
+def refresh_all_tokens(rooms, token):
+    success_count = 0
+    failed_rooms = []
+
+    for r in rooms:
+        refreshed = refresh_token(r["id"], token)
+        if refreshed and isinstance(refreshed, dict) and refreshed.get("id"):
+            success_count += 1
+        else:
+            failed_rooms.append(r["nama_room"])
+
+    return success_count, failed_rooms
+
+
 def is_valid_email(email):
     return re.match(r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$", email) is not None
 

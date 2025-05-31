@@ -8,7 +8,7 @@ import pandas as pd
 from utils import (
     login_user, get_groups, get_rooms, get_profile,
     create_group, generate_room, refresh_token, assign_room,
-    register_user, request_otp, verify_otp  
+    register_user, request_otp, verify_otp, refresh_all_tokens  
 )
 from datetime import datetime
 
@@ -322,7 +322,7 @@ elif st.session_state.page == "room":
                 enable_enterprise_modules=False
             )
 
-                    # --- MANUAL REFRESH TOKEN ---
+            # --- REFRESH TOKEN SECTION ---
             st.markdown("---")
             st.subheader("🔄 Refresh Token Manual")
             col1, col2 = st.columns([1, 1])
@@ -347,6 +347,8 @@ elif st.session_state.page == "room":
                 <div class="refresh-btn-padding"></div>
                 """, unsafe_allow_html=True)
                 refresh_clicked = st.button("🔁 Refresh Token", use_container_width=True)
+
+            refresh_all_clicked = st.button("🔁 Refresh Semua Token", use_container_width=True)
 
             # Variabel penampung pesan
             message = None
@@ -377,7 +379,26 @@ elif st.session_state.page == "room":
                                 message = msg
                                 message_type = "error"
 
-            # Tampilkan pesan full width di bawah kolom
+            elif refresh_all_clicked:
+                with st.spinner("Merefresh semua token..."):
+                    time.sleep(1)
+                    success_count = 0
+                    failed_rooms = []
+                    for r in rooms:
+                        refreshed = refresh_token(r["id"], st.session_state.token)
+                        if refreshed and isinstance(refreshed, dict) and refreshed.get("id"):
+                            success_count += 1
+                        else:
+                            failed_rooms.append(r["nama_room"])
+
+                    if failed_rooms:
+                        message = f"Sebagian token gagal diperbarui: {', '.join(failed_rooms)}"
+                        message_type = "warning"
+                    else:
+                        message = f"Semua token ({success_count}) berhasil diperbarui."
+                        message_type = "success"
+
+            # Tampilkan pesan hasil
             if message:
                 if message_type == "warning":
                     st.warning(message)
@@ -385,6 +406,7 @@ elif st.session_state.page == "room":
                     st.error(message)
                 elif message_type == "success":
                     st.success(message)
+       
 
 # Halaman Manage
 elif st.session_state.page == "manage":
