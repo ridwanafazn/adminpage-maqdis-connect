@@ -3,9 +3,11 @@ import os
 import requests
 import re
 import time
-from dotenv import load_dotenv
-load_dotenv()
-API_BASE_URL = os.getenv("API_BASE_URL")
+API_BASE_URL = None
+
+def set_api_base_url(url):
+    global API_BASE_URL
+    API_BASE_URL = url
 
 def login_user(email, password):
     try:

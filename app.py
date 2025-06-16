@@ -8,7 +8,8 @@ import pandas as pd
 from utils import (
     login_user, get_groups, get_rooms, get_profile,
     create_group, generate_room, refresh_token, assign_room,
-    register_user, request_otp, verify_otp, refresh_all_tokens  
+    register_user, request_otp, verify_otp, refresh_all_tokens,
+    set_api_base_url  
 )
 from datetime import datetime
 
@@ -32,6 +33,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
 
 
 # Inisialisasi session_state
@@ -181,16 +183,44 @@ elif st.session_state.page == "registration":
                         st.error(result.get("message", "Gagal mengirim ulang OTP."))
 
 
-# Dashboard
+#Dashboard
 elif st.session_state.page == "dashboard":
+
+    if "API_BASE_URL" not in st.session_state:
+        st.session_state.API_BASE_URL = ""
+    if "temp_api_url" not in st.session_state:
+        st.session_state.temp_api_url = ""
+
     st.title("📊 Dashboard")
-    if not st.session_state.token:
-        st.warning("Silahkan login terlebih dahulu.")
+
+    # Input sementara URL API, label wajib supaya input muncul
+    st.session_state.temp_api_url = st.text_input(
+        label="Masukkan API BASE URL",
+        value=st.session_state.temp_api_url,
+        placeholder="https://api.maqdis.net"
+    )
+
+    # Tombol untuk set URL
+    if st.button("Set API URL"):
+        if st.session_state.temp_api_url:
+            st.session_state.API_BASE_URL = st.session_state.temp_api_url
+            set_api_base_url(st.session_state.API_BASE_URL)
+            st.success(f"API URL berhasil di-set")
+        else:
+            st.error("API BASE URL kosong")
+
+    # Setelah URL diset, baru tampilkan konten dashboard
+    if st.session_state.API_BASE_URL:
+        if not st.session_state.token:
+            st.warning("Silahkan login terlebih dahulu.")
+        else:
+            groups = get_groups(st.session_state.token)
+            rooms = get_rooms(st.session_state.token)
+            st.metric("Jumlah Grup", len(groups))
+            st.metric("Jumlah Room", len(rooms))
     else:
-        groups = get_groups(st.session_state.token)
-        rooms = get_rooms(st.session_state.token)
-        st.metric("Jumlah Grup", len(groups))
-        st.metric("Jumlah Room", len(rooms))
+        st.warning("API Base URL belum di-set")
+
 
 
 # Grup
